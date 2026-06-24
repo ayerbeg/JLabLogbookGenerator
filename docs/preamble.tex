@@ -1,0 +1,143 @@
+% preamble.tex --- shared by all logbook documentation files
+% Engine: pdflatex
+
+\documentclass[11pt, a4paper]{report}
+
+% --- Encoding and fonts ---
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+% --- Page geometry ---
+\usepackage[
+    top=2.5cm, bottom=2.5cm,
+    left=2.8cm, right=2.8cm
+]{geometry}
+
+% --- Colours ---
+\usepackage[dvipsnames]{xcolor}
+\definecolor{pionorange}{RGB}{255,152,0}
+\definecolor{codeblue}{RGB}{0,80,160}
+\definecolor{notebg}{RGB}{255,248,230}
+\definecolor{warningbg}{RGB}{255,235,235}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{tabhead}{RGB}{230,230,230}
+
+% --- Hyperlinks ---
+\usepackage[
+    colorlinks=true,
+    linkcolor=codeblue,
+    urlcolor=codeblue,
+    citecolor=codeblue,
+    pdftitle={Logbook Entry Generator Documentation},
+    pdfauthor={PionCT Experiment}
+]{hyperref}
+
+% --- Tables ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+
+% --- Code listings ---
+\usepackage{listings}
+\lstset{
+    basicstyle=\small\ttfamily,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    framerule=0.4pt,
+    rulecolor=\color{gray!40},
+    breaklines=true,
+    breakatwhitespace=true,
+    showstringspaces=false,
+    tabsize=2,
+    xleftmargin=6pt,
+    xrightmargin=6pt,
+    aboveskip=8pt,
+    belowskip=6pt,
+}
+\lstdefinelanguage{JSON}{
+    basicstyle=\small\ttfamily,
+    morestring=[b]",
+    stringstyle=\color{codeblue},
+    literate=
+        *{:}{{{\color{black}{:}}}}{1}
+         {\{}{{{\color{black}{\{}}}}{1}
+         {\}}{{{\color{black}{\}}}}}{1}
+         {[}{{{\color{black}{[}}}}{1}
+         {]}{{{\color{black}{]}}}}{1},
+}
+\lstdefinelanguage{bash}{
+    basicstyle=\small\ttfamily,
+    morecomment=[l]{\#},
+    commentstyle=\color{gray},
+}
+\lstdefinelanguage{javascript}{
+    basicstyle=\small\ttfamily,
+    keywords={const,let,var,function,return,if,else,for,await,async,true,false},
+    keywordstyle=\color{codeblue},
+    morestring=[b]',
+    morestring=[b]",
+    stringstyle=\color{BrickRed},
+    morecomment=[l]{//},
+    commentstyle=\color{gray},
+}
+
+% --- Inline code ---
+\newcommand{\code}[1]{\texttt{\small#1}}
+
+% --- Note / Warning boxes ---
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+
+\newtcolorbox{notebox}{
+    enhanced, breakable,
+    colback=notebg,
+    colframe=pionorange,
+    leftrule=4pt, rightrule=0pt, toprule=0pt, bottomrule=0pt,
+    arc=0pt, outer arc=0pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    fontupper=\small,
+}
+\newtcolorbox{warningbox}{
+    enhanced, breakable,
+    colback=warningbg,
+    colframe=red!70!black,
+    leftrule=4pt, rightrule=0pt, toprule=0pt, bottomrule=0pt,
+    arc=0pt, outer arc=0pt,
+    left=8pt, right=8pt, top=4pt, bottom=4pt,
+    fontupper=\small,
+}
+
+% --- Section styling ---
+\usepackage{titlesec}
+\titleformat{\chapter}[block]
+    {\normalfont\Large\bfseries\color{pionorange}}
+    {\thechapter.}{0.8em}{}
+    [\vspace{-0.3em}\color{pionorange}\rule{\linewidth}{1.5pt}]
+\titlespacing{\chapter}{0pt}{0pt}{12pt}
+
+\titleformat{\section}
+    {\normalfont\large\bfseries\color{black}}
+    {\thesection}{0.8em}{}
+\titleformat{\subsection}
+    {\normalfont\normalsize\bfseries}
+    {\thesubsection}{0.8em}{}
+
+% --- Header / footer ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{gray}\leftmark}
+\fancyhead[R]{\small\color{gray}Logbook Entry Generator}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+
+% --- Misc ---
+\usepackage{enumitem}
+\setlist[itemize]{itemsep=2pt, topsep=4pt}
+\setlist[enumerate]{itemsep=2pt, topsep=4pt}
+\usepackage{parskip}
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}

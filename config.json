@@ -1,0 +1,188 @@
+{
+  "_comment": "Logbook generator config. Run build.py after editing to regenerate the HTML and Apps Script.",
+
+  "experiment_name": "PionCT",
+  "page_title": "PionCT Logbook Entry Generator",
+  "contact_email": "gayoso@jlab.org",
+  "credit_line": "Original idea from Andrew Schick for the PRadII experiment",
+
+  "logo": {
+    "path": "logo00.png",
+    "alt": "PionCT Logo"
+  },
+
+  "quick_links": [
+    { "label": "Short Term Run Plan",                       "id": "runPlanLink"    },
+    { "label": "Link to pionCT Shift Worker's Checklist",   "id": "checklistLink"  },
+    { "label": "Beamline Overview/HyCal Scalars Screenshot","id": "beamlineLink"   },
+    { "label": "Link to Target GUI Screenshot",             "id": "targetGuiLink"  },
+    { "label": "Link to Beamtime Accounting",               "id": "beamtimeLink"   }
+  ],
+
+  "google_sheets": {
+    "enabled": false,
+    "shared_secret": "CHANGE_ME_TO_SOMETHING_PRIVATE"
+  },
+
+  "run_fields": [
+    {
+      "key":          "run-number",
+      "label":        "Run Number",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "Run Number",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "date",
+      "label":        "Date",
+      "type":         "text",
+      "source":       "auto",
+      "sheet_column": "Date",
+      "sheet_align":  "center",
+      "_comment":     "Auto-filled as YYYY-MM-DD at generate/send time. Not shown in the form."
+    },
+    {
+      "key":          "run-start",
+      "label":        "Start Time",
+      "type":         "text",
+      "source":       "user",
+      "placeholder":  "00:00",
+      "sheet_column": "Start Time",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-stop",
+      "label":        "Stop Time",
+      "type":         "text",
+      "source":       "user",
+      "placeholder":  "00:00",
+      "sheet_column": "End Time",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-length",
+      "label":        "Total Time (min)",
+      "type":         "text",
+      "source":       "auto",
+      "sheet_column": "Total Time",
+      "sheet_align":  "right",
+      "_comment":     "Auto-calculated as Stop - Start. Shown read-only in the form."
+    },
+    {
+      "key":          "run-target",
+      "label":        "Target",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "Target",
+      "sheet_align":  "left"
+    },
+    {
+      "key":          "run-current",
+      "label":        "Beam Current (uA)",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "Beam Current (uA)",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-hms-p",
+      "label":        "HMS P [GeV]",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "HMS P [GeV]",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-shms-p",
+      "label":        "SHMS P [GeV]",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "SHMS P [GeV]",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-hms-angle",
+      "label":        "HMS Angle [deg]",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "HMS angle [deg]",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-shms-angle",
+      "label":        "SHMS Angle [deg]",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "SHMS angle [deg]",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-events",
+      "label":        "Number of Events (M)",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "Number of Events (M)",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-trigger-rate",
+      "label":        "Trigger Rate [Hz]",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "Trigger Rate [Hz]",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-livetime",
+      "label":        "Live Time [%]",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "Live Time [%]",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "plots-ok",
+      "label":        "Plots OK?",
+      "type":         "text",
+      "source":       "sheet-only",
+      "sheet_column": "Plots OK?",
+      "sheet_align":  "left",
+      "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
+    },
+    {
+      "key":          "run-config",
+      "label":        "DAQ Config",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "DAQ config",
+      "sheet_align":  "left"
+    },
+    {
+      "key":          "prescales",
+      "label":        "Prescales Enabled",
+      "type":         "text",
+      "source":       "sheet-only",
+      "sheet_column": "Prescales Enabled",
+      "sheet_align":  "left",
+      "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
+    },
+    {
+      "key":          "run-comments",
+      "label":        "Comments",
+      "type":         "textarea",
+      "source":       "user",
+      "sheet_column": "Comments",
+      "sheet_align":  "left"
+    },
+    {
+      "key":          "full-replay",
+      "label":        "Full Replay Started?",
+      "type":         "text",
+      "source":       "sheet-only",
+      "sheet_column": "Full Replay Started?",
+      "sheet_align":  "left",
+      "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
+    }
+  ]
+}
