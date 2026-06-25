@@ -20,7 +20,7 @@
   ],
 
   "google_sheets": {
-    "enabled": false,
+    "enabled": true,
     "shared_secret": "CHANGE_ME_TO_SOMETHING_PRIVATE"
   },
 

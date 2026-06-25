@@ -146,4 +146,4 @@ of contents.
 
 Questions: [gayoso@jlab.org](mailto:gayoso@jlab.org)
 
-Original logbook tool concept by Andrew Schick for the PRadII experiment.
+Original logbook tool concept by Andrew Schick [acschick@jlab.org](mailto:acschick@jlab.org) for the PRadII experiment.
