@@ -117,7 +117,7 @@ def embed_logo(logo_cfg: dict, config_dir: Path) -> str:
 def js_key(css_class: str) -> str:
     """Convert a CSS class like 'run-hms-p' to a JS variable name 'hmsP'."""
     # strip the 'run-' prefix if present
-    s = css_class.removeprefix("run-")
+    s = css_class[4:] if css_class.startswith("run-") else css_class
     parts = s.split("-")
     return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
@@ -393,8 +393,8 @@ def build_apps_script(cfg: dict, schema_hash: str) -> str:
         src  = f["source"]
         col  = f["sheet_column"]
         if src == "sheet-only":
-            comment = f"  // {col} — filled manually in sheet"
-            row_lines.append(f"      ''{comment},")
+            comment = f"  // {col} -- filled manually in sheet"
+            row_lines.append(f"      '',{comment}")
         elif key == "date":
             row_lines.append(f"      run.{jkey}        || '',")
         else:
@@ -419,7 +419,7 @@ def build_apps_script(cfg: dict, schema_hash: str) -> str:
  *    "Google Sheets Export Settings" field.
  *
  * WARNING: "Anyone" means anyone with this URL can POST rows.
- * The shared secret is the only guard — keep the URL and secret private.
+ * The shared secret is the only guard -- keep the URL and secret private.
  */
 
 const SHARED_SECRET = '{secret}';

@@ -21,7 +21,7 @@
 
   "google_sheets": {
     "enabled": true,
-    "shared_secret": "CHANGE_ME_TO_SOMETHING_PRIVATE"
+    "shared_secret": "pionCT_run_sheet"
   },
 
   "run_fields": [
