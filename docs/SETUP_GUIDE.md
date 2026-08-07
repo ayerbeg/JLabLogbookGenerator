@@ -85,20 +85,61 @@ display text; `id` must be a unique alphanumeric identifier (no spaces). Add,
 remove, or relabel as many as your experiment needs. The import feature uses
 the label text to identify links when re-parsing a generated HTML entry.
 
+### Shift Header Fields
+
+```json
+"shift_header": [
+  { "id": "shiftType", "label": "Shift", "type": "select",
+    "options": ["Owl", "Day", "Swing"], "default": "Owl" },
+  { "id": "shiftDate", "label": "Shift Date", "type": "date-now",
+    "placeholder": "DD-Month-YYYY" },
+  { "id": "shiftLeader", "label": "Shift Leader", "type": "text" },
+  { "id": "targetOperator", "label": "Target Operator", "type": "text" }
+]
+```
+
+These fields appear once at the top of the Shift Log Entries section (not
+per log line). Supported `type` values:
+
+| Type | Behaviour |
+|---|---|
+| `text` | Free-text input. |
+| `select` | Dropdown. Requires an `options` array; `default` is optional (falls back to the first option). |
+| `date-now` | Text input with a "Set Date" button. Fills the field as `DD-MonthName-YYYY` from the system clock, then disables itself and turns green. State persists across reloads. |
+
+Add, remove, or reorder entries freely — the build script generates the form,
+save/load, generated-HTML output, and import parsing for each one
+automatically. No `sheet_column` is needed; these fields are not sent to
+Google Sheets.
+
 ### Google Sheets
 
 ```json
 "google_sheets": {
   "enabled":       true,
+  "sheet_name":    "Run Log",
   "shared_secret": "CHANGE_ME_TO_SOMETHING_PRIVATE"
 }
 ```
 
 - Set `"enabled": false` to remove all Sheets UI from the generated HTML and
   skip generating `apps_script.gs`.
+- `sheet_name` — the exact name of the tab (sheet) within your Google
+  Spreadsheet that rows should be written to. The tab must already exist;
+  the script does not create it. Defaults to `"Sheet1"` if omitted.
 - `shared_secret` — any string you choose. It must match the value in the
   deployed Apps Script. Keep it private; it is the only access control on who
   can POST rows to your sheet.
+
+> ⚠ **Why `sheet_name` matters:** a Google Spreadsheet can contain multiple
+> tabs. The Apps Script targets a tab by name (`getSheetByName`), not by
+> "whichever tab is active" — a Web App triggered by an external HTTP request
+> has no browser session, so there is no "active" tab in that context.
+> Earlier versions of this script used `getActiveSheet()`, which silently
+> falls back to whichever tab is first by position — renaming a tab does
+> **not** change its position, so this could send data to the wrong tab
+> without any error. If you have multiple tabs, always set `sheet_name`
+> explicitly and rebuild.
 
 ### Run Fields
 
@@ -123,12 +164,32 @@ table and (if Sheets is enabled) the Google Sheet.
 |---|---|---|---|
 | `key` | yes | hyphenated string, e.g. `run-hms-p` | CSS class used internally. Must be unique. |
 | `label` | yes | any string | Label shown in the HTML form and table header. |
-| `type` | yes | `"text"` or `"textarea"` | Input type in the form. Use `textarea` for Comments. |
+| `type` | yes | `"text"`, `"textarea"`, `"checkbox"` | Input type in the form. Use `textarea` for Comments, `checkbox` for yes/no flags. |
 | `source` | yes | `"user"`, `"auto"`, `"sheet-only"` | See below. |
 | `sheet_column` | yes | any string | Column header written to Google Sheets. |
 | `sheet_align` | yes | `"left"`, `"right"`, `"center"` | Alignment in the HTML run table. |
-| `placeholder` | no | any string | Placeholder text in the input (e.g. `"00:00"`). |
+| `placeholder` | no | any string | Placeholder text in the input (e.g. `"00:00"`). Ignored for `checkbox`. |
+| `js_key` | no | valid JS identifier | Overrides the auto-derived payload key name. See below. |
 | `_comment` | no | any string | Ignored by the build script. For your own notes. |
+
+**`type: "checkbox"` example:**
+
+```json
+{
+  "key":          "run-good-flag",
+  "label":        "Good Run",
+  "type":         "checkbox",
+  "source":       "user",
+  "sheet_column": "Good Run",
+  "sheet_align":  "center"
+}
+```
+
+This renders as a real checkbox in the form. It saves and loads as a boolean,
+is sent to Google Sheets as a native `TRUE`/`FALSE` value (not a string), and
+displays as "Yes" / "No" in the generated logbook HTML table. Round-trips
+correctly through Import from Previous HTML. Use this pattern for any
+yes/no flag — a good-run marker, a "replay OK" checkbox, etc.
 
 **`source` values:**
 
@@ -145,6 +206,22 @@ table and (if Sheets is enabled) the Google Sheet.
 > ⚠ The two `auto` keys (`date` and `run-length`) have special hardcoded
 > behaviour in the build script. Any other field with `source: "auto"` will
 > appear in the form as a greyed-out text input but will not be auto-populated.
+
+**The `js_key` property.** By default, the build script derives the payload
+key sent to Google Sheets by stripping a leading `run-` from `key` and
+camelCasing the remainder — e.g. `run-hms-p` → `hmsP`. For most fields this is
+fine. Four fields don't follow that pattern and use an explicit override:
+
+| `key` | Auto-derived (unused) | `js_key` override actually used |
+|---|---|---|
+| `run-number` | `number` | `runNumber` |
+| `run-start`  | `start`  | `startTime` |
+| `run-stop`   | `stop`   | `stopTime` |
+| `run-length` | `length` | `totalTime` |
+
+If you add a new field whose desired payload name doesn't mechanically match
+its `key`, add `"js_key": "yourName"` to that field's entry. Otherwise, omit
+it and the default derivation is used.
 
 **Field order matters.** The order of entries in `run_fields` determines both
 the left-to-right order of columns in the HTML table and the column order in

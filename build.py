@@ -32,8 +32,9 @@ from pathlib import Path
 
 REQUIRED_TOP_LEVEL = ["experiment_name", "page_title", "contact_email",
                       "quick_links", "run_fields"]
-VALID_SOURCES = {"user", "auto", "sheet-only"}
-VALID_TYPES   = {"text", "textarea"}
+VALID_SOURCES      = {"user", "auto", "sheet-only"}
+VALID_SHIFT_TYPES  = {"text", "select", "date-now"}
+VALID_TYPES   = {"text", "textarea", "checkbox"}
 
 def load_config(config_path: Path) -> dict:
     with open(config_path, encoding="utf-8") as f:
@@ -52,6 +53,15 @@ def load_config(config_path: Path) -> dict:
             die(f"run_fields[{i}]: source must be one of {VALID_SOURCES}, got '{field['source']}'")
         if field["type"] not in VALID_TYPES:
             die(f"run_fields[{i}]: type must be one of {VALID_TYPES}, got '{field['type']}'")
+
+    for i, field in enumerate(cfg.get("shift_header", [])):
+        for k in ("id", "label", "type"):
+            if k not in field:
+                die(f"shift_header[{i}] ('{field.get('id','?')}') is missing required key: '{k}'")
+        if field["type"] not in VALID_SHIFT_TYPES:
+            die(f"shift_header[{i}]: type must be one of {VALID_SHIFT_TYPES}, got '{field['type']}'")
+        if field["type"] == "select" and not field.get("options"):
+            die(f"shift_header[{i}] ('{field['id']}'): type 'select' requires an 'options' list.")
 
     sheets_cfg = cfg.get("google_sheets", {})
     if sheets_cfg.get("enabled") and not sheets_cfg.get("shared_secret"):
@@ -114,9 +124,21 @@ def embed_logo(logo_cfg: dict, config_dir: Path) -> str:
 # JavaScript helpers derived from field config
 # ---------------------------------------------------------------------------
 
-def js_key(css_class: str) -> str:
-    """Convert a CSS class like 'run-hms-p' to a JS variable name 'hmsP'."""
-    # strip the 'run-' prefix if present
+def js_key(field: dict) -> str:
+    """
+    Return the JS object key for a run field.
+
+    If the field config specifies "js_key" explicitly, that value is used
+    verbatim (needed for fields whose payload name doesn't mechanically
+    derive from the CSS class, e.g. run-start -> startTime, run-stop ->
+    stopTime, run-length -> totalTime).
+
+    Otherwise, derive it by stripping a leading "run-" from the CSS class
+    and camelCasing the remainder, e.g. run-hms-p -> hmsP.
+    """
+    if "js_key" in field:
+        return field["js_key"]
+    css_class = field["key"]
     s = css_class[4:] if css_class.startswith("run-") else css_class
     parts = s.split("-")
     return parts[0] + "".join(p.capitalize() for p in parts[1:])
@@ -142,38 +164,21 @@ def build_add_run_entry_fields(user_fields: list, auto_fields: set) -> str:
             onchange = ' onchange="updateRunLength(this)"'
 
         lines.append('                    <div class="form-group">')
-        lines.append(f'                        <label>{label}:</label>')
 
-        if ftype == "textarea":
-            lines.append(f'                        <textarea class="{key}"></textarea>')
+        if ftype == "checkbox":
+            lines.append(f'                        <label style="display:inline-block; margin-right:8px;">{label}:</label>')
+            lines.append(f'                        <input type="checkbox" class="{key}" style="width:18px; height:18px; vertical-align:middle;">')
         else:
-            lines.append(
-                f'                        <input type="text" class="{key}"{ph_attr}{onchange}{readonly} value="">'
-            )
+            lines.append(f'                        <label>{label}:</label>')
+            if ftype == "textarea":
+                lines.append(f'                        <textarea class="{key}"></textarea>')
+            else:
+                lines.append(
+                    f'                        <input type="text" class="{key}"{ph_attr}{onchange}{readonly} value="">'
+                )
+
         lines.append('                    </div>')
 
-    return "\n".join(lines)
-
-
-def build_extract_run_data(user_and_auto_form_fields: list) -> str:
-    """Generate the extractRunData() function body."""
-    lines = [
-        "        function extractRunData(item) {",
-        "            const now  = new Date();",
-        "            const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;",
-        "            return {",
-    ]
-    for f in user_and_auto_form_fields:
-        key  = f["key"]
-        jkey = js_key(key)
-        if key == "date":
-            lines.append(f"                {jkey}:    date,")
-        elif key == "run-length":
-            lines.append(f"                {jkey}:    item.querySelector('.run-length').value,")
-        else:
-            lines.append(f"                {jkey}:    item.querySelector('.{key}').value,")
-    lines.append("            };")
-    lines.append("        }")
     return "\n".join(lines)
 
 
@@ -203,12 +208,14 @@ def build_generate_html_run_table(all_html_fields: list) -> str:
     # Variable declarations for each field
     for f in all_html_fields:
         key  = f["key"]
-        jkey = js_key(key)
+        jkey = js_key(f)
         if key == "date":
             lines.append("                const now        = new Date();")
             lines.append(
                 "                const date       = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;"
             )
+        elif f["type"] == "checkbox":
+            lines.append(f"                const {jkey:<14} = item.querySelector('.{key}').checked ? 'Yes' : 'No';")
         else:
             lines.append(f"                const {jkey:<14} = item.querySelector('.{key}').value;")
 
@@ -218,7 +225,7 @@ def build_generate_html_run_table(all_html_fields: list) -> str:
     lines.append("")
     lines.append("                html += `<tr${styleAttr}>\\n`;")
     for f in all_html_fields:
-        jkey  = js_key(f["key"])
+        jkey  = js_key(f)
         align = f["sheet_align"]
         lines.append(f'                html += `    <td style="text-align:{align}">\\n${{{jkey}}}\\n    </td>\\n`;')
     lines.append("                html += `</tr>\\n\\n`;")
@@ -235,9 +242,9 @@ def build_save_run_entries(form_fields: list) -> str:
     ]
     for f in form_fields:
         key  = f["key"]
-        jkey = js_key(key)
-        if key == "run-length":
-            lines.append(f"                    {jkey}:   item.querySelector('.run-length').value,")
+        jkey = js_key(f)
+        if f["type"] == "checkbox":
+            lines.append(f"                    {jkey}:   item.querySelector('.{key}').checked,")
         else:
             lines.append(f"                    {jkey}:   item.querySelector('.{key}').value,")
     lines.append("                    sentToSheet: item.querySelector('.sheet-led')?.dataset.sent === 'true'")
@@ -257,9 +264,9 @@ def build_load_run_entries(form_fields: list) -> str:
     ]
     for f in form_fields:
         key  = f["key"]
-        jkey = js_key(key)
-        if key == "run-length":
-            lines.append(f"                    lastItem.querySelector('.run-length').value = run.{jkey} || '';")
+        jkey = js_key(f)
+        if f["type"] == "checkbox":
+            lines.append(f"                    lastItem.querySelector('.{key}').checked = !!run.{jkey};")
         else:
             lines.append(f"                    lastItem.querySelector('.{key}').value = run.{jkey} || '';")
     lines.append("                    if (run.sentToSheet) {")
@@ -296,6 +303,10 @@ def build_import_run_entries(html_fields: list) -> str:
         key = f["key"]
         if key == "date":
             lines.append(f"                            // cells[{col_idx}] is Date — auto-generated, not restored")
+        elif f["type"] == "checkbox":
+            lines.append(
+                f"                            entry.querySelector('.{key}').checked = cells[{col_idx}].textContent.trim() === 'Yes';"
+            )
         else:
             lines.append(
                 f"                            entry.querySelector('.{key}').value = cells[{col_idx}].textContent.trim();"
@@ -359,7 +370,6 @@ def build_import_links(quick_links: list) -> str:
     for link in quick_links:
         label_lower = link["label"].lower()
         lid         = link["id"]
-        # use the first significant word of the label as the keyword
         keyword = label_lower.split()[0]
         lines.append(
             f'                    if (text.toLowerCase().includes(\'{keyword}\')) {{'
@@ -368,10 +378,146 @@ def build_import_links(quick_links: list) -> str:
             f'                        document.getElementById(\'{lid}\').value = href;'
         )
         lines.append("                    } else")
-    # strip trailing ' else'
     if lines:
         lines[-1] = lines[-1].rstrip(" else")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Shift header builder functions
+# ---------------------------------------------------------------------------
+
+def build_shift_header_form(shift_header: list) -> str:
+    """Generate the grid of shift header fields above the shift log entries."""
+    lines = ['        <div class="grid-2" style="margin-bottom:15px;">']
+    for f in shift_header:
+        fid   = f["id"]
+        label = f["label"]
+        ftype = f["type"]
+        lines.append('            <div class="form-group">')
+        lines.append(f'                <label>{label}:</label>')
+        if ftype == "select":
+            default = f.get("default", f["options"][0])
+            lines.append(f'                <select id="{fid}" onchange="saveToLocalStorage()">')
+            for opt in f["options"]:
+                selected = ' selected' if opt == default else ''
+                lines.append(f'                    <option value="{opt}"{selected}>{opt}</option>')
+            lines.append('                </select>')
+        elif ftype == "date-now":
+            ph = f.get("placeholder", "DD-Month-YYYY")
+            lines.append('                <div style="display:flex; gap:8px;">')
+            lines.append(f'                    <input type="text" id="{fid}" placeholder="{ph}" value="" style="flex:1;" onchange="saveToLocalStorage()">')
+            lines.append(f'                    <button type="button" id="{fid}NowBtn" class="btn btn-secondary" style="margin:0; padding:8px 12px; white-space:nowrap;" onclick="setShiftDate(\'{fid}\')">Set Date</button>')
+            lines.append('                </div>')
+        else:  # text
+            lines.append(f'                <input type="text" id="{fid}" value="" onchange="saveToLocalStorage()">')
+        lines.append('            </div>')
+    lines.append('        </div>')
+    return "\n".join(lines)
+
+
+def build_shift_header_js(shift_header: list) -> str:
+    """Generate the setShiftDate JS function, save, load, generate, clear, and import fragments."""
+    ids   = [f["id"] for f in shift_header]
+    types = {f["id"]: f["type"] for f in shift_header}
+    defaults = {f["id"]: f.get("default", f["options"][0] if f["type"] == "select" else "")
+                for f in shift_header}
+
+    date_ids = [fid for fid, t in types.items() if t == "date-now"]
+
+    # setShiftDate function — one per date-now field
+    fn_lines = []
+    fn_lines.append("        const MONTHS = ['January','February','March','April','May','June',")
+    fn_lines.append("                        'July','August','September','October','November','December'];")
+    fn_lines.append("        function setShiftDate(fieldId) {")
+    fn_lines.append("            const now = new Date();")
+    fn_lines.append("            const formatted = `${String(now.getDate()).padStart(2,'0')}-${MONTHS[now.getMonth()]}-${now.getFullYear()}`;")
+    fn_lines.append("            document.getElementById(fieldId).value = formatted;")
+    fn_lines.append("            const btn = document.getElementById(fieldId + 'NowBtn');")
+    fn_lines.append("            btn.textContent = 'Date Set';")
+    fn_lines.append("            btn.disabled = true;")
+    fn_lines.append("            btn.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';")
+    fn_lines.append("            btn.style.cursor = 'default';")
+    fn_lines.append("            saveToLocalStorage();")
+    fn_lines.append("        }")
+    set_date_fn = "\n".join(fn_lines)
+
+    # save JS
+    save_lines = [f"                {fid}: document.getElementById('{fid}').value," for fid in ids]
+    save_js = "\n".join(save_lines)
+
+    # load JS — restore values and re-disable date buttons if already set
+    load_lines = []
+    for f in shift_header:
+        fid     = f["id"]
+        default = defaults[fid]
+        load_lines.append(f"                document.getElementById('{fid}').value = data.{fid} || '{default}';")
+        if f["type"] == "date-now":
+            load_lines.append(f"                if (data.{fid}) {{")
+            load_lines.append(f"                    const _b{fid} = document.getElementById('{fid}NowBtn');")
+            load_lines.append(f"                    _b{fid}.textContent = 'Date Set'; _b{fid}.disabled = true;")
+            load_lines.append(f"                    _b{fid}.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';")
+            load_lines.append(f"                    _b{fid}.style.cursor = 'default';")
+            load_lines.append("                }")
+    load_js = "\n".join(load_lines)
+
+    # generate JS — build the <p> line
+    gen_lines = []
+    first = shift_header[0]
+    gen_lines.append(f"            const _{first['id']} = document.getElementById('{first['id']}').value;")
+    gen_lines.append(f"            html += `<p><strong>{first['label']}:</strong> ${{_{first['id']}}}`; ")
+    for f in shift_header[1:]:
+        fid   = f["id"]
+        label = f["label"]
+        gen_lines.append(f"            const _{fid} = document.getElementById('{fid}').value;")
+        gen_lines.append(f"            if (_{fid}) html += ` &nbsp;&nbsp; <strong>{label}:</strong> ${{_{fid}}}`;")
+    gen_lines.append("            html += '</p>\\n';")
+    generate_js = "\n".join(gen_lines)
+
+    # clear JS
+    clear_lines = []
+    for f in shift_header:
+        fid     = f["id"]
+        default = defaults[fid]
+        clear_lines.append(f"                document.getElementById('{fid}').value = '{default}';")
+        if f["type"] == "date-now":
+            clear_lines.append(f"                const _cb{fid} = document.getElementById('{fid}NowBtn');")
+            clear_lines.append(f"                _cb{fid}.textContent = 'Set Date'; _cb{fid}.disabled = false;")
+            clear_lines.append(f"                _cb{fid}.style.background = ''; _cb{fid}.style.cursor = '';")
+    clear_js = "\n".join(clear_lines)
+
+    # import restore JS
+    import_lines = [
+        "                // Restore shift header fields",
+        "                doc.querySelectorAll('p').forEach(p => {",
+        "                    const ptext = p.textContent;",
+    ]
+    checks = " || ".join([f"ptext.includes('{f['label']}:')" for f in shift_header])
+    import_lines.append(f"                    if ({checks}) {{")
+    for f in shift_header:
+        fid   = f["id"]
+        label = f["label"]
+        if f["type"] == "select":
+            opts  = "|".join(f["options"])
+            import_lines.append(f"                        const _m{fid} = ptext.match(/{label}:\\s*({opts})/);")
+            import_lines.append(f"                        if (_m{fid}) document.getElementById('{fid}').value = _m{fid}[1].trim();")
+        elif f["type"] == "date-now":
+            import_lines.append(f"                        const _m{fid} = ptext.match(/{label}:\\s*([^\\u00a0]+?)(?:\\s{{2,}}|$)/);")
+            import_lines.append(f"                        if (_m{fid}) {{")
+            import_lines.append(f"                            document.getElementById('{fid}').value = _m{fid}[1].trim();")
+            import_lines.append(f"                            const _ib{fid} = document.getElementById('{fid}NowBtn');")
+            import_lines.append(f"                            _ib{fid}.textContent = 'Date Set'; _ib{fid}.disabled = true;")
+            import_lines.append(f"                            _ib{fid}.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';")
+            import_lines.append(f"                            _ib{fid}.style.cursor = 'default';")
+            import_lines.append("                        }")
+        else:
+            import_lines.append(f"                        const _m{fid} = ptext.match(/{label}:\\s*([^\\u00a0]+?)(?:\\s{{2,}}|$)/);")
+            import_lines.append(f"                        if (_m{fid}) document.getElementById('{fid}').value = _m{fid}[1].trim();")
+    import_lines.append("                    }")
+    import_lines.append("                });")
+    import_js = "\n".join(import_lines)
+
+    return set_date_fn, save_js, load_js, generate_js, clear_js, import_js
 
 
 # ---------------------------------------------------------------------------
@@ -379,24 +525,31 @@ def build_import_links(quick_links: list) -> str:
 # ---------------------------------------------------------------------------
 
 def build_apps_script(cfg: dict, schema_hash: str) -> str:
-    exp     = cfg["experiment_name"]
-    secret  = cfg["google_sheets"]["shared_secret"]
-    fields  = cfg["run_fields"]
+    exp        = cfg["experiment_name"]
+    secret     = cfg["google_sheets"]["shared_secret"]
+    sheet_name = cfg["google_sheets"].get("sheet_name", "Sheet1")
+    fields     = cfg["run_fields"]
 
     header_list  = ",\n  ".join(f'"{f["sheet_column"]}"' for f in fields)
-    row_comments = {f["key"]: f.get("_comment", "") for f in fields}
 
     row_lines = []
     for f in fields:
-        key  = f["key"]
-        jkey = js_key(key)
-        src  = f["source"]
-        col  = f["sheet_column"]
+        key   = f["key"]
+        jkey  = js_key(f)
+        src   = f["source"]
+        col   = f["sheet_column"]
+        ftype = f["type"]
         if src == "sheet-only":
             comment = f"  // {col} -- filled manually in sheet"
             row_lines.append(f"      '',{comment}")
-        elif key == "date":
-            row_lines.append(f"      run.{jkey}        || '',")
+        elif ftype == "checkbox":
+            # Write literal "Yes"/"No" text rather than a boolean --
+            # Sheets checkbox-formatted cells override custom number
+            # formats, so a boolean can't be reliably redisplayed as
+            # text at the spreadsheet level. Still guarded against the
+            # `false || ''` trap: an explicit false must become "No",
+            # not fall through to the empty-string default.
+            row_lines.append(f"      run.{jkey} === true ? 'Yes' : (run.{jkey} === false ? 'No' : ''),")
         else:
             row_lines.append(f"      run.{jkey}        || '',")
 
@@ -411,18 +564,28 @@ def build_apps_script(cfg: dict, schema_hash: str) -> str:
  * SETUP:
  * 1. Open your target Google Sheet.
  * 2. Extensions -> Apps Script -> delete placeholder code -> paste this file.
- * 3. Change SHARED_SECRET below to match the value in the logbook tool.
- * 4. Deploy -> New deployment -> Web app.
+ * 3. Confirm SHEET_NAME below matches the exact tab name you want rows
+ *    written to. The tab must already exist -- this script does not create it.
+ * 4. Change SHARED_SECRET below to match the value in the logbook tool.
+ * 5. Deploy -> New deployment -> Web app.
  *      Execute as: Me
  *      Who has access: Anyone
- * 5. Authorize, then copy the Web App URL into the logbook tool's
+ * 6. Authorize, then copy the Web App URL into the logbook tool's
  *    "Google Sheets Export Settings" field.
  *
  * WARNING: "Anyone" means anyone with this URL can POST rows.
  * The shared secret is the only guard -- keep the URL and secret private.
+ *
+ * NOTE ON SHEET SELECTION: this script targets a tab by name
+ * (SpreadsheetApp.getSheetByName), not "the active sheet." A Web App
+ * triggered externally has no browser session, so "active sheet" silently
+ * falls back to whichever tab is first by position -- renaming a tab does
+ * NOT change its position. Set SHEET_NAME (or google_sheets.sheet_name in
+ * config.json, then rebuild) to the exact tab name you want targeted.
  */
 
 const SHARED_SECRET = '{secret}';
+const SHEET_NAME     = '{sheet_name}';   // <-- must match your tab name exactly
 
 const HEADERS = [
   {header_list}
@@ -436,7 +599,13 @@ function doPost(e) {{
       return jsonResponse({{ ok: false, error: 'Invalid secret.' }});
     }}
 
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    if (!sheet) {{
+      return jsonResponse({{
+        ok: false,
+        error: `Sheet named "${{SHEET_NAME}}" not found. Check SHEET_NAME in the script matches your tab name exactly.`
+      }});
+    }}
 
     if (sheet.getLastRow() === 0) {{
       sheet.appendRow(HEADERS);
@@ -448,7 +617,7 @@ function doPost(e) {{
     ];
 
     sheet.appendRow(row);
-    return jsonResponse({{ ok: true, rowAppended: sheet.getLastRow() }});
+    return jsonResponse({{ ok: true, rowAppended: sheet.getLastRow(), sheet: SHEET_NAME }});
 
   }} catch (err) {{
     return jsonResponse({{ ok: false, error: err.message }});
@@ -490,9 +659,6 @@ def build_html(cfg: dict, logo_tag: str, sheets_enabled: bool,
 
     # Build JS fragments
     run_entry_fields_html = build_add_run_entry_fields(form_fields, auto_form_keys)
-    extract_run_data_js   = build_extract_run_data(
-        [f for f in fields if f["source"] != "sheet-only"]
-    )
     generate_run_table_js = build_generate_html_run_table(html_table_fields)
     save_run_js           = build_save_run_entries(form_fields)
     load_run_js           = build_load_run_entries(form_fields)
@@ -503,6 +669,15 @@ def build_html(cfg: dict, logo_tag: str, sheets_enabled: bool,
     ql_clear_js           = build_quick_links_clear(ql)
     ql_generate_js        = build_quick_links_generate_html(ql)
     ql_import_js          = build_import_links(ql)
+
+    sh = cfg.get("shift_header", [])
+    if sh:
+        (sh_set_date_fn, sh_save_js, sh_load_js,
+         sh_generate_js, sh_clear_js, sh_import_js) = build_shift_header_js(sh)
+        sh_form_html = build_shift_header_form(sh)
+    else:
+        sh_set_date_fn = sh_save_js = sh_load_js = ""
+        sh_generate_js = sh_clear_js = sh_import_js = sh_form_html = ""
 
     sheets_warning = ""
     if sheets_enabled:
@@ -650,11 +825,11 @@ EXTRACT_PLACEHOLDER
         extract_lines = []
         for f in [x for x in fields if x["source"] != "sheet-only"]:
             key  = f["key"]
-            jkey = js_key(key)
+            jkey = js_key(f)
             if key == "date":
                 extract_lines.append(f"                {jkey}:   date,")
-            elif key == "run-length":
-                extract_lines.append(f"                {jkey}:   item.querySelector('.run-length').value,")
+            elif f["type"] == "checkbox":
+                extract_lines.append(f"                {jkey}:   item.querySelector('.{key}').checked,")
             else:
                 extract_lines.append(f"                {jkey}:   item.querySelector('.{key}').value,")
         sheets_functions_js = sheets_functions_js.replace(
@@ -675,7 +850,7 @@ EXTRACT_PLACEHOLDER
             max-width: 1400px;
             margin: 20px auto;
             padding: 20px;
-            background: #e6e6e6;
+            background: #000000;
             background-attachment: fixed;
             color: #2C3539;
             min-height: 100vh;
@@ -742,6 +917,7 @@ EXTRACT_PLACEHOLDER
             border: 1px solid #ddd; padding: 15px;
             background: white; border-radius: 4px; color: #333;
         }}
+        #preview p {{ color: #333; }}
         #preview h2 {{ color: #2c3e50; border-bottom: 2px solid #34495e; text-shadow: none; }}
         #preview h3 {{ color: #2c3e50; text-shadow: none; }}
         .grid-2 {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }}
@@ -800,6 +976,7 @@ EXTRACT_PLACEHOLDER
 
     <div class="container">
         <h2>Shift Log Entries</h2>
+{sh_form_html}
         <div id="shiftEntries"></div>
         <button class="btn btn-success" onclick="addShiftEntry()">+ Add Shift Entry</button>
     </div>
@@ -911,6 +1088,8 @@ EXTRACT_PLACEHOLDER
             saveToLocalStorage();
         }}
 
+{sh_set_date_fn}
+
         function parseHHMM(value) {{
             const match = /^(\\d{{1,2}}):(\\d{{2}})$/.exec(value.trim());
             if (!match) return null;
@@ -945,6 +1124,7 @@ EXTRACT_PLACEHOLDER
 
             // Shift Log
             html += '\\n<hr>\\n<h2>Shift Log</h2>\\n';
+{sh_generate_js}
             html += '<table style="border:2px solid black;"> \\n';
             html += '  <colgroup>\\n    <col style="border:1px solid black;"/>\\n    <col style="border:1px solid black;"/>\\n  </colgroup>\\n';
             html += '  <tr style="border:1px solid black; background-color: rgba(222,222,222,1.0);">\\n    <th>Time</th>\\n    <th>Logbook Entry</th>\\n  </tr>\\n\\n';
@@ -975,6 +1155,7 @@ EXTRACT_PLACEHOLDER
             const data = {{
                 summaryText: document.getElementById('summaryText').value,
 {ql_save_js}{sheets_save_js}
+{sh_save_js}
                 additionalLinks: [],
                 shiftEntries:    [],
                 runEntries:      [],
@@ -1009,6 +1190,7 @@ EXTRACT_PLACEHOLDER
                 const data = JSON.parse(saved);
                 document.getElementById('summaryText').value = data.summaryText || '';
 {ql_load_js}{sheets_load_js}
+{sh_load_js}
 
                 data.additionalLinks?.forEach(link => {{
                     addAdditionalLink();
@@ -1055,6 +1237,7 @@ EXTRACT_PLACEHOLDER
 
                 document.getElementById('summaryText').value = '';
 {ql_clear_js}
+{sh_clear_js}
                 document.getElementById('shiftEntries').innerHTML = '';
                 document.getElementById('runEntries').innerHTML   = '';
 
@@ -1065,6 +1248,8 @@ EXTRACT_PLACEHOLDER
                     tmp.innerHTML = summaryMatch[1].trim();
                     document.getElementById('summaryText').value = tmp.textContent.trim();
                 }}
+
+{sh_import_js}
 
                 doc.querySelectorAll('a').forEach(link => {{
                     const href = link.getAttribute('href') || '';

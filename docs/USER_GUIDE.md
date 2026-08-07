@@ -60,6 +60,18 @@ Click **Remove** on an entry to delete it.
 
 ### Shift Log Entries
 
+At the top of this section, fill in the shift-level details (these apply once
+for the whole shift, not per log line):
+
+- **Shift** — dropdown: Owl, Day, or Swing.
+- **Shift Date** — click **Set Date** to fill it automatically as
+  `DD-MonthName-YYYY` (e.g. `04-August-2026`). The button turns green and
+  disables itself after use, so it's clear the date has already been set.
+  This state is remembered even if you reload the page. If you need to
+  correct the date, you can still type directly into the field.
+- **Shift Leader** — free text.
+- **Target Operator** — free text.
+
 Click **+ Add Shift Entry** to add a timestamped log line.
 
 - **Time** — enter the time manually in `HH:MM` (24-hour) format, or click

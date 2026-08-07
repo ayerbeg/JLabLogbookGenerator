@@ -21,8 +21,36 @@
 
   "google_sheets": {
     "enabled": true,
-    "shared_secret": "pionCT_run_sheet"
+    "sheet_name": "Run Log",
+    "shared_secret": "CHANGE_ME_TO_SOMETHING_PRIVATE"
   },
+
+  "shift_header": [
+    {
+      "id":      "shiftType",
+      "label":   "Shift",
+      "type":    "select",
+      "options": ["Owl", "Day", "Swing"],
+      "default": "Owl"
+    },
+    {
+      "id":      "shiftDate",
+      "label":   "Shift Date",
+      "type":    "date-now",
+      "placeholder": "DD-Month-YYYY",
+      "_comment": "Has a 'Set Date' button that disables after first use."
+    },
+    {
+      "id":    "shiftLeader",
+      "label": "Shift Leader",
+      "type":  "text"
+    },
+    {
+      "id":    "targetOperator",
+      "label": "Target Operator",
+      "type":  "text"
+    }
+  ],
 
   "run_fields": [
     {
@@ -31,7 +59,9 @@
       "type":         "text",
       "source":       "user",
       "sheet_column": "Run Number",
-      "sheet_align":  "right"
+      "sheet_align":  "right",
+      "js_key":       "runNumber",
+      "_comment":     "js_key override: this field keeps the 'run' prefix, unlike other fields."
     },
     {
       "key":          "date",
@@ -49,7 +79,9 @@
       "source":       "user",
       "placeholder":  "00:00",
       "sheet_column": "Start Time",
-      "sheet_align":  "right"
+      "sheet_align":  "right",
+      "js_key":       "startTime",
+      "_comment":     "js_key override: payload name doesn't mechanically derive from the CSS class."
     },
     {
       "key":          "run-stop",
@@ -58,7 +90,9 @@
       "source":       "user",
       "placeholder":  "00:00",
       "sheet_column": "End Time",
-      "sheet_align":  "right"
+      "sheet_align":  "right",
+      "js_key":       "stopTime",
+      "_comment":     "js_key override: payload name doesn't mechanically derive from the CSS class."
     },
     {
       "key":          "run-length",
@@ -67,7 +101,8 @@
       "source":       "auto",
       "sheet_column": "Total Time",
       "sheet_align":  "right",
-      "_comment":     "Auto-calculated as Stop - Start. Shown read-only in the form."
+      "js_key":       "totalTime",
+      "_comment":     "Auto-calculated as Stop - Start. Shown read-only in the form. js_key override: payload name doesn't mechanically derive from the CSS class."
     },
     {
       "key":          "run-target",
@@ -183,6 +218,14 @@
       "sheet_column": "Full Replay Started?",
       "sheet_align":  "left",
       "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
+    },
+    {
+      "key":          "run-good-flag",
+      "label":        "50k ok?",
+      "type":         "checkbox",
+      "source":       "user",
+      "sheet_column": "50k OK?",
+      "sheet_align":  "center"
     }
   ]
 }
