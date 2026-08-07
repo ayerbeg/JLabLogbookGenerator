@@ -983,6 +983,8 @@ EXTRACT_PLACEHOLDER
 {sheets_settings_section}
     <div class="container">
         <h2>Run Summary</h2>
+        <h3>Click once 'Send to Google Sheet', otherwise you will duplicate the entry</h3>
+        <h3>You can edit the entry manually in the spreadsheet.</h3>
         <div id="runEntries"></div>
         <button class="btn btn-success" onclick="addRunEntry()">+ Add Run Entry</button>
     </div>
@@ -1062,7 +1064,8 @@ EXTRACT_PLACEHOLDER
             div.innerHTML = `
                 <div class="entry-header">
                     <span class="entry-number">{led_html}
-                        Run Entry #${{runCounter}}
+                        Run Entry #${{runCounter}}</br>
+                        Fill the entries you have the information, leave the rest empty.
                     </span>
                     <div>{run_entry_header_buttons}
                         <button class="btn btn-danger" onclick="removeAndSave(this)">Remove</button>

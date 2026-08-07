@@ -14,8 +14,6 @@
   "quick_links": [
     { "label": "Short Term Run Plan",                       "id": "runPlanLink"    },
     { "label": "Link to pionCT Shift Worker's Checklist",   "id": "checklistLink"  },
-    { "label": "Beamline Overview/HyCal Scalars Screenshot","id": "beamlineLink"   },
-    { "label": "Link to Target GUI Screenshot",             "id": "targetGuiLink"  },
     { "label": "Link to Beamtime Accounting",               "id": "beamtimeLink"   }
   ],
 
@@ -153,6 +151,38 @@
       "sheet_align":  "right"
     },
     {
+      "key":          "run-hms-eff",
+      "label":        "HMS track efficiency",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "HMS track eff",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-shms-eff",
+      "label":        "SHMS track efficiency",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "SHMS track eff",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-hms-34",
+      "label":        "HMS 3/4 efficiency",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "HMS 3/4 eff",
+      "sheet_align":  "right"
+    },
+    {
+      "key":          "run-shms-34",
+      "label":        "SHMS 3/4 efficiency",
+      "type":         "text",
+      "source":       "user",
+      "sheet_column": "SHMS 3/4 eff",
+      "sheet_align":  "right"
+    },
+   {
       "key":          "run-events",
       "label":        "Number of Events (M)",
       "type":         "text",
@@ -168,39 +198,13 @@
       "sheet_column": "Trigger Rate [Hz]",
       "sheet_align":  "right"
     },
-    {
-      "key":          "run-livetime",
-      "label":        "Live Time [%]",
-      "type":         "text",
-      "source":       "user",
-      "sheet_column": "Live Time [%]",
-      "sheet_align":  "right"
-    },
-    {
-      "key":          "plots-ok",
-      "label":        "Plots OK?",
-      "type":         "text",
-      "source":       "sheet-only",
-      "sheet_column": "Plots OK?",
-      "sheet_align":  "left",
-      "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
-    },
-    {
-      "key":          "run-config",
-      "label":        "DAQ Config",
-      "type":         "text",
-      "source":       "user",
-      "sheet_column": "DAQ config",
-      "sheet_align":  "left"
-    },
-    {
+     {
       "key":          "prescales",
       "label":        "Prescales Enabled",
       "type":         "text",
-      "source":       "sheet-only",
+      "source":       "user",
       "sheet_column": "Prescales Enabled",
-      "sheet_align":  "left",
-      "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
+      "sheet_align":  "left"
     },
     {
       "key":          "run-comments",
@@ -211,20 +215,19 @@
       "sheet_align":  "left"
     },
     {
-      "key":          "full-replay",
-      "label":        "Full Replay Started?",
-      "type":         "text",
-      "source":       "sheet-only",
-      "sheet_column": "Full Replay Started?",
-      "sheet_align":  "left",
-      "_comment":     "Not shown in the HTML form. Written as blank cell; filled manually in the sheet."
-    },
-    {
       "key":          "run-good-flag",
       "label":        "50k ok?",
       "type":         "checkbox",
       "source":       "user",
       "sheet_column": "50k OK?",
+      "sheet_align":  "center"
+    },
+    {
+      "key":          "run-production",
+      "label":        "Production?",
+      "type":         "checkbox",
+      "source":       "user",
+      "sheet_column": "Production?",
       "sheet_align":  "center"
     }
   ]

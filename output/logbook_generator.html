@@ -10,7 +10,7 @@
             max-width: 1400px;
             margin: 20px auto;
             padding: 20px;
-            background: #e6e6e6;
+            background: #000000;
             background-attachment: fixed;
             color: #2C3539;
             min-height: 100vh;
@@ -77,6 +77,7 @@
             border: 1px solid #ddd; padding: 15px;
             background: white; border-radius: 4px; color: #333;
         }
+        #preview p { color: #333; }
         #preview h2 { color: #2c3e50; border-bottom: 2px solid #34495e; text-shadow: none; }
         #preview h3 { color: #2c3e50; text-shadow: none; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -94,7 +95,7 @@
 <body>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
-         GOOGLE SHEETS SCHEMA HASH: f7fb044dfc4af058
+         GOOGLE SHEETS SCHEMA HASH: 78d4a2f614e7e342
          If you change run_fields in config.json and rebuild, check whether
          this hash changed. If it did, you MUST redeploy the Apps Script and
          update the Web App URL in the Export Settings below, or the sheet
@@ -145,15 +146,7 @@
             <input type="url" id="checklistLink" value="">
         </div>
         <div class="form-group">
-            <label>3. Beamline Overview/HyCal Scalars Screenshot:</label>
-            <input type="url" id="beamlineLink" value="">
-        </div>
-        <div class="form-group">
-            <label>4. Link to Target GUI Screenshot:</label>
-            <input type="url" id="targetGuiLink" value="">
-        </div>
-        <div class="form-group">
-            <label>5. Link to Beamtime Accounting:</label>
+            <label>3. Link to Beamtime Accounting:</label>
             <input type="url" id="beamtimeLink" value="">
         </div>
         <h4>Additional Links (optional)</h4>
@@ -163,6 +156,31 @@
 
     <div class="container">
         <h2>Shift Log Entries</h2>
+        <div class="grid-2" style="margin-bottom:15px;">
+            <div class="form-group">
+                <label>Shift:</label>
+                <select id="shiftType" onchange="saveToLocalStorage()">
+                    <option value="Owl" selected>Owl</option>
+                    <option value="Day">Day</option>
+                    <option value="Swing">Swing</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Shift Date:</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="shiftDate" placeholder="DD-Month-YYYY" value="" style="flex:1;" onchange="saveToLocalStorage()">
+                    <button type="button" id="shiftDateNowBtn" class="btn btn-secondary" style="margin:0; padding:8px 12px; white-space:nowrap;" onclick="setShiftDate('shiftDate')">Set Date</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Shift Leader:</label>
+                <input type="text" id="shiftLeader" value="" onchange="saveToLocalStorage()">
+            </div>
+            <div class="form-group">
+                <label>Target Operator:</label>
+                <input type="text" id="targetOperator" value="" onchange="saveToLocalStorage()">
+            </div>
+        </div>
         <div id="shiftEntries"></div>
         <button class="btn btn-success" onclick="addShiftEntry()">+ Add Shift Entry</button>
     </div>
@@ -187,6 +205,8 @@
 
     <div class="container">
         <h2>Run Summary</h2>
+        <h3>Click once 'Send to Google Sheet', otherwise you will duplicate the entry</h3>
+        <h3>You can edit the entry manually in the spreadsheet.</h3>
         <div id="runEntries"></div>
         <button class="btn btn-success" onclick="addRunEntry()">+ Add Run Entry</button>
     </div>
@@ -267,7 +287,8 @@
                 <div class="entry-header">
                     <span class="entry-number">
                         <span class="sheet-led" data-sent="false" title="Not yet sent to Google Sheet" style="display:inline-block; width:10px; height:10px; border-radius:50%; background-color:#f44336; margin-right:8px; box-shadow:0 0 4px rgba(244,67,54,0.6);"></span>
-                        Run Entry #${runCounter}
+                        Run Entry #${runCounter}</br>
+                        Fill the entries you have the information, leave the rest empty.
                     </span>
                     <div>
                         <button class="btn btn-info" style="margin-right:10px;" onclick="sendRunToSheet(this)">Send to Google Sheet</button>
@@ -317,6 +338,22 @@
                         <input type="text" class="run-shms-angle" value="">
                     </div>
                     <div class="form-group">
+                        <label>HMS track efficiency:</label>
+                        <input type="text" class="run-hms-eff" value="">
+                    </div>
+                    <div class="form-group">
+                        <label>SHMS track efficiency:</label>
+                        <input type="text" class="run-shms-eff" value="">
+                    </div>
+                    <div class="form-group">
+                        <label>HMS 3/4 efficiency:</label>
+                        <input type="text" class="run-hms-34" value="">
+                    </div>
+                    <div class="form-group">
+                        <label>SHMS 3/4 efficiency:</label>
+                        <input type="text" class="run-shms-34" value="">
+                    </div>
+                    <div class="form-group">
                         <label>Number of Events (M):</label>
                         <input type="text" class="run-events" value="">
                     </div>
@@ -325,16 +362,20 @@
                         <input type="text" class="run-trigger-rate" value="">
                     </div>
                     <div class="form-group">
-                        <label>Live Time [%]:</label>
-                        <input type="text" class="run-livetime" value="">
-                    </div>
-                    <div class="form-group">
-                        <label>DAQ Config:</label>
-                        <input type="text" class="run-config" value="">
+                        <label>Prescales Enabled:</label>
+                        <input type="text" class="prescales" value="">
                     </div>
                     <div class="form-group">
                         <label>Comments:</label>
                         <textarea class="run-comments"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="display:inline-block; margin-right:8px;">50k ok?:</label>
+                        <input type="checkbox" class="run-good-flag" style="width:18px; height:18px; vertical-align:middle;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:inline-block; margin-right:8px;">Production?:</label>
+                        <input type="checkbox" class="run-production" style="width:18px; height:18px; vertical-align:middle;">
                     </div>
                 </div>
             `;
@@ -351,6 +392,20 @@
             const input = button.previousElementSibling;
             const now = new Date();
             input.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            saveToLocalStorage();
+        }
+
+        const MONTHS = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+        function setShiftDate(fieldId) {
+            const now = new Date();
+            const formatted = `${String(now.getDate()).padStart(2,'0')}-${MONTHS[now.getMonth()]}-${now.getFullYear()}`;
+            document.getElementById(fieldId).value = formatted;
+            const btn = document.getElementById(fieldId + 'NowBtn');
+            btn.textContent = 'Date Set';
+            btn.disabled = true;
+            btn.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';
+            btn.style.cursor = 'default';
             saveToLocalStorage();
         }
 
@@ -383,10 +438,6 @@
             if (runPlanLink) html += `<a href="${runPlanLink}">Short Term Run Plan</a>\n<br>\n`;
             const checklistLink = document.getElementById('checklistLink').value;
             if (checklistLink) html += `<a href="${checklistLink}">Link to pionCT Shift Worker's Checklist</a>\n<br>\n`;
-            const beamlineLink = document.getElementById('beamlineLink').value;
-            if (beamlineLink) html += `<a href="${beamlineLink}">Beamline Overview/HyCal Scalars Screenshot</a>\n<br>\n`;
-            const targetGuiLink = document.getElementById('targetGuiLink').value;
-            if (targetGuiLink) html += `<a href="${targetGuiLink}">Link to Target GUI Screenshot</a>\n<br>\n`;
             const beamtimeLink = document.getElementById('beamtimeLink').value;
             if (beamtimeLink) html += `<a href="${beamtimeLink}">Link to Beamtime Accounting</a>\n<br>\n`;
 
@@ -399,6 +450,15 @@
 
             // Shift Log
             html += '\n<hr>\n<h2>Shift Log</h2>\n';
+            const _shiftType = document.getElementById('shiftType').value;
+            html += `<p><strong>Shift:</strong> ${_shiftType}`; 
+            const _shiftDate = document.getElementById('shiftDate').value;
+            if (_shiftDate) html += ` &nbsp;&nbsp; <strong>Shift Date:</strong> ${_shiftDate}`;
+            const _shiftLeader = document.getElementById('shiftLeader').value;
+            if (_shiftLeader) html += ` &nbsp;&nbsp; <strong>Shift Leader:</strong> ${_shiftLeader}`;
+            const _targetOperator = document.getElementById('targetOperator').value;
+            if (_targetOperator) html += ` &nbsp;&nbsp; <strong>Target Operator:</strong> ${_targetOperator}`;
+            html += '</p>\n';
             html += '<table style="border:2px solid black;"> \n';
             html += '  <colgroup>\n    <col style="border:1px solid black;"/>\n    <col style="border:1px solid black;"/>\n  </colgroup>\n';
             html += '  <tr style="border:1px solid black; background-color: rgba(222,222,222,1.0);">\n    <th>Time</th>\n    <th>Logbook Entry</th>\n  </tr>\n\n';
@@ -413,7 +473,7 @@
             html += '<hr>\n<h2>Run Summary</h2>\n';
             html += '<table style="border:2px solid black;">\n';
             html += '  <colgroup>\n';
-            for (let i = 0; i < 16; i++) {
+            for (let i = 0; i < 21; i++) {
                 html += '    <col style="border:1px solid black;"/>\n';
             }
             html += '  </colgroup> \n';
@@ -429,53 +489,68 @@
             html += '    <th style="text-align:right;">SHMS P [GeV]</th>\n';
             html += '    <th style="text-align:right;">HMS angle [deg]</th>\n';
             html += '    <th style="text-align:right;">SHMS angle [deg]</th>\n';
+            html += '    <th style="text-align:right;">HMS track eff</th>\n';
+            html += '    <th style="text-align:right;">SHMS track eff</th>\n';
+            html += '    <th style="text-align:right;">HMS 3/4 eff</th>\n';
+            html += '    <th style="text-align:right;">SHMS 3/4 eff</th>\n';
             html += '    <th style="text-align:right;">Number of Events (M)</th>\n';
             html += '    <th style="text-align:right;">Trigger Rate [Hz]</th>\n';
-            html += '    <th style="text-align:right;">Live Time [%]</th>\n';
-            html += '    <th style="text-align:left;">DAQ config</th>\n';
+            html += '    <th style="text-align:left;">Prescales Enabled</th>\n';
             html += '    <th style="text-align:left;">Comments</th>\n';
+            html += '    <th style="text-align:center;">50k OK?</th>\n';
+            html += '    <th style="text-align:center;">Production?</th>\n';
             html += '  </tr>\n\n';
 
             const runItems = document.querySelectorAll('#runEntries .entry-item');
             runItems.forEach((item, index) => {
-                const number         = item.querySelector('.run-number').value;
+                const runNumber      = item.querySelector('.run-number').value;
                 const now        = new Date();
                 const date       = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-                const start          = item.querySelector('.run-start').value;
-                const stop           = item.querySelector('.run-stop').value;
-                const length         = item.querySelector('.run-length').value;
+                const startTime      = item.querySelector('.run-start').value;
+                const stopTime       = item.querySelector('.run-stop').value;
+                const totalTime      = item.querySelector('.run-length').value;
                 const target         = item.querySelector('.run-target').value;
                 const current        = item.querySelector('.run-current').value;
                 const hmsP           = item.querySelector('.run-hms-p').value;
                 const shmsP          = item.querySelector('.run-shms-p').value;
                 const hmsAngle       = item.querySelector('.run-hms-angle').value;
                 const shmsAngle      = item.querySelector('.run-shms-angle').value;
+                const hmsEff         = item.querySelector('.run-hms-eff').value;
+                const shmsEff        = item.querySelector('.run-shms-eff').value;
+                const hms34          = item.querySelector('.run-hms-34').value;
+                const shms34         = item.querySelector('.run-shms-34').value;
                 const events         = item.querySelector('.run-events').value;
                 const triggerRate    = item.querySelector('.run-trigger-rate').value;
-                const livetime       = item.querySelector('.run-livetime').value;
-                const config         = item.querySelector('.run-config').value;
+                const prescales      = item.querySelector('.prescales').value;
                 const comments       = item.querySelector('.run-comments').value;
+                const goodFlag       = item.querySelector('.run-good-flag').checked ? 'Yes' : 'No';
+                const production     = item.querySelector('.run-production').checked ? 'Yes' : 'No';
 
                 const bgStyle   = index % 2 === 1 ? 'background-color: rgba(222,222,222,0.3);' : '';
                 const styleAttr = bgStyle ? ` style="border:1px solid black; ${bgStyle}"` : ' style="border:1px solid black;"';
 
                 html += `<tr${styleAttr}>\n`;
-                html += `    <td style="text-align:right">\n${number}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${runNumber}\n    </td>\n`;
                 html += `    <td style="text-align:center">\n${date}\n    </td>\n`;
-                html += `    <td style="text-align:right">\n${start}\n    </td>\n`;
-                html += `    <td style="text-align:right">\n${stop}\n    </td>\n`;
-                html += `    <td style="text-align:right">\n${length}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${startTime}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${stopTime}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${totalTime}\n    </td>\n`;
                 html += `    <td style="text-align:left">\n${target}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${current}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${hmsP}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${shmsP}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${hmsAngle}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${shmsAngle}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${hmsEff}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${shmsEff}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${hms34}\n    </td>\n`;
+                html += `    <td style="text-align:right">\n${shms34}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${events}\n    </td>\n`;
                 html += `    <td style="text-align:right">\n${triggerRate}\n    </td>\n`;
-                html += `    <td style="text-align:right">\n${livetime}\n    </td>\n`;
-                html += `    <td style="text-align:left">\n${config}\n    </td>\n`;
+                html += `    <td style="text-align:left">\n${prescales}\n    </td>\n`;
                 html += `    <td style="text-align:left">\n${comments}\n    </td>\n`;
+                html += `    <td style="text-align:center">\n${goodFlag}\n    </td>\n`;
+                html += `    <td style="text-align:center">\n${production}\n    </td>\n`;
                 html += `</tr>\n\n`;
             });
             html += '</table>\n';
@@ -489,22 +564,27 @@
             const now  = new Date();
             const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
             return {
-                number:   item.querySelector('.run-number').value,
+                runNumber:   item.querySelector('.run-number').value,
                 date:   date,
-                start:   item.querySelector('.run-start').value,
-                stop:   item.querySelector('.run-stop').value,
-                length:   item.querySelector('.run-length').value,
+                startTime:   item.querySelector('.run-start').value,
+                stopTime:   item.querySelector('.run-stop').value,
+                totalTime:   item.querySelector('.run-length').value,
                 target:   item.querySelector('.run-target').value,
                 current:   item.querySelector('.run-current').value,
                 hmsP:   item.querySelector('.run-hms-p').value,
                 shmsP:   item.querySelector('.run-shms-p').value,
                 hmsAngle:   item.querySelector('.run-hms-angle').value,
                 shmsAngle:   item.querySelector('.run-shms-angle').value,
+                hmsEff:   item.querySelector('.run-hms-eff').value,
+                shmsEff:   item.querySelector('.run-shms-eff').value,
+                hms34:   item.querySelector('.run-hms-34').value,
+                shms34:   item.querySelector('.run-shms-34').value,
                 events:   item.querySelector('.run-events').value,
                 triggerRate:   item.querySelector('.run-trigger-rate').value,
-                livetime:   item.querySelector('.run-livetime').value,
-                config:   item.querySelector('.run-config').value,
+                prescales:   item.querySelector('.prescales').value,
                 comments:   item.querySelector('.run-comments').value,
+                goodFlag:   item.querySelector('.run-good-flag').checked,
+                production:   item.querySelector('.run-production').checked,
             };
         }
 
@@ -593,11 +673,13 @@
                 summaryText: document.getElementById('summaryText').value,
                 runPlanLink: document.getElementById('runPlanLink').value,
                 checklistLink: document.getElementById('checklistLink').value,
-                beamlineLink: document.getElementById('beamlineLink').value,
-                targetGuiLink: document.getElementById('targetGuiLink').value,
                 beamtimeLink: document.getElementById('beamtimeLink').value,
                 sheetsWebAppUrl:    document.getElementById('sheetsWebAppUrl').value,
                 sheetsSharedSecret: document.getElementById('sheetsSharedSecret').value,
+                shiftType: document.getElementById('shiftType').value,
+                shiftDate: document.getElementById('shiftDate').value,
+                shiftLeader: document.getElementById('shiftLeader').value,
+                targetOperator: document.getElementById('targetOperator').value,
                 additionalLinks: [],
                 shiftEntries:    [],
                 runEntries:      [],
@@ -621,21 +703,26 @@
             // Save run entries
             document.querySelectorAll('#runEntries .entry-item').forEach(item => {
                 const runData = {
-                    number:   item.querySelector('.run-number').value,
-                    start:   item.querySelector('.run-start').value,
-                    stop:   item.querySelector('.run-stop').value,
-                    length:   item.querySelector('.run-length').value,
+                    runNumber:   item.querySelector('.run-number').value,
+                    startTime:   item.querySelector('.run-start').value,
+                    stopTime:   item.querySelector('.run-stop').value,
+                    totalTime:   item.querySelector('.run-length').value,
                     target:   item.querySelector('.run-target').value,
                     current:   item.querySelector('.run-current').value,
                     hmsP:   item.querySelector('.run-hms-p').value,
                     shmsP:   item.querySelector('.run-shms-p').value,
                     hmsAngle:   item.querySelector('.run-hms-angle').value,
                     shmsAngle:   item.querySelector('.run-shms-angle').value,
+                    hmsEff:   item.querySelector('.run-hms-eff').value,
+                    shmsEff:   item.querySelector('.run-shms-eff').value,
+                    hms34:   item.querySelector('.run-hms-34').value,
+                    shms34:   item.querySelector('.run-shms-34').value,
                     events:   item.querySelector('.run-events').value,
                     triggerRate:   item.querySelector('.run-trigger-rate').value,
-                    livetime:   item.querySelector('.run-livetime').value,
-                    config:   item.querySelector('.run-config').value,
+                    prescales:   item.querySelector('.prescales').value,
                     comments:   item.querySelector('.run-comments').value,
+                    goodFlag:   item.querySelector('.run-good-flag').checked,
+                    production:   item.querySelector('.run-production').checked,
                     sentToSheet: item.querySelector('.sheet-led')?.dataset.sent === 'true'
                 };
                 data.runEntries.push(runData);
@@ -654,11 +741,19 @@
                 document.getElementById('summaryText').value = data.summaryText || '';
                 document.getElementById('runPlanLink').value = data.runPlanLink || '';
                 document.getElementById('checklistLink').value = data.checklistLink || '';
-                document.getElementById('beamlineLink').value = data.beamlineLink || '';
-                document.getElementById('targetGuiLink').value = data.targetGuiLink || '';
                 document.getElementById('beamtimeLink').value = data.beamtimeLink || '';
                 document.getElementById('sheetsWebAppUrl').value    = data.sheetsWebAppUrl    || '';
                 document.getElementById('sheetsSharedSecret').value = data.sheetsSharedSecret || '';
+                document.getElementById('shiftType').value = data.shiftType || 'Owl';
+                document.getElementById('shiftDate').value = data.shiftDate || '';
+                if (data.shiftDate) {
+                    const _bshiftDate = document.getElementById('shiftDateNowBtn');
+                    _bshiftDate.textContent = 'Date Set'; _bshiftDate.disabled = true;
+                    _bshiftDate.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';
+                    _bshiftDate.style.cursor = 'default';
+                }
+                document.getElementById('shiftLeader').value = data.shiftLeader || '';
+                document.getElementById('targetOperator').value = data.targetOperator || '';
 
                 data.additionalLinks?.forEach(link => {
                     addAdditionalLink();
@@ -681,21 +776,26 @@
                     addRunEntry();
                     const items    = document.querySelectorAll('#runEntries .entry-item');
                     const lastItem = items[items.length - 1];
-                    lastItem.querySelector('.run-number').value = run.number || '';
-                    lastItem.querySelector('.run-start').value = run.start || '';
-                    lastItem.querySelector('.run-stop').value = run.stop || '';
-                    lastItem.querySelector('.run-length').value = run.length || '';
+                    lastItem.querySelector('.run-number').value = run.runNumber || '';
+                    lastItem.querySelector('.run-start').value = run.startTime || '';
+                    lastItem.querySelector('.run-stop').value = run.stopTime || '';
+                    lastItem.querySelector('.run-length').value = run.totalTime || '';
                     lastItem.querySelector('.run-target').value = run.target || '';
                     lastItem.querySelector('.run-current').value = run.current || '';
                     lastItem.querySelector('.run-hms-p').value = run.hmsP || '';
                     lastItem.querySelector('.run-shms-p').value = run.shmsP || '';
                     lastItem.querySelector('.run-hms-angle').value = run.hmsAngle || '';
                     lastItem.querySelector('.run-shms-angle').value = run.shmsAngle || '';
+                    lastItem.querySelector('.run-hms-eff').value = run.hmsEff || '';
+                    lastItem.querySelector('.run-shms-eff').value = run.shmsEff || '';
+                    lastItem.querySelector('.run-hms-34').value = run.hms34 || '';
+                    lastItem.querySelector('.run-shms-34').value = run.shms34 || '';
                     lastItem.querySelector('.run-events').value = run.events || '';
                     lastItem.querySelector('.run-trigger-rate').value = run.triggerRate || '';
-                    lastItem.querySelector('.run-livetime').value = run.livetime || '';
-                    lastItem.querySelector('.run-config').value = run.config || '';
+                    lastItem.querySelector('.prescales').value = run.prescales || '';
                     lastItem.querySelector('.run-comments').value = run.comments || '';
+                    lastItem.querySelector('.run-good-flag').checked = !!run.goodFlag;
+                    lastItem.querySelector('.run-production').checked = !!run.production;
                     if (run.sentToSheet) {
                         const led = lastItem.querySelector('.sheet-led');
                         led.style.backgroundColor = '#66bb6a';
@@ -733,9 +833,14 @@
                 document.getElementById('summaryText').value = '';
                 document.getElementById('runPlanLink').value = '';
                 document.getElementById('checklistLink').value = '';
-                document.getElementById('beamlineLink').value = '';
-                document.getElementById('targetGuiLink').value = '';
                 document.getElementById('beamtimeLink').value = '';
+                document.getElementById('shiftType').value = 'Owl';
+                document.getElementById('shiftDate').value = '';
+                const _cbshiftDate = document.getElementById('shiftDateNowBtn');
+                _cbshiftDate.textContent = 'Set Date'; _cbshiftDate.disabled = false;
+                _cbshiftDate.style.background = ''; _cbshiftDate.style.cursor = '';
+                document.getElementById('shiftLeader').value = '';
+                document.getElementById('targetOperator').value = '';
                 document.getElementById('shiftEntries').innerHTML = '';
                 document.getElementById('runEntries').innerHTML   = '';
 
@@ -747,6 +852,27 @@
                     document.getElementById('summaryText').value = tmp.textContent.trim();
                 }
 
+                // Restore shift header fields
+                doc.querySelectorAll('p').forEach(p => {
+                    const ptext = p.textContent;
+                    if (ptext.includes('Shift:') || ptext.includes('Shift Date:') || ptext.includes('Shift Leader:') || ptext.includes('Target Operator:')) {
+                        const _mshiftType = ptext.match(/Shift:\s*(Owl|Day|Swing)/);
+                        if (_mshiftType) document.getElementById('shiftType').value = _mshiftType[1].trim();
+                        const _mshiftDate = ptext.match(/Shift Date:\s*([^\u00a0]+?)(?:\s{2,}|$)/);
+                        if (_mshiftDate) {
+                            document.getElementById('shiftDate').value = _mshiftDate[1].trim();
+                            const _ibshiftDate = document.getElementById('shiftDateNowBtn');
+                            _ibshiftDate.textContent = 'Date Set'; _ibshiftDate.disabled = true;
+                            _ibshiftDate.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';
+                            _ibshiftDate.style.cursor = 'default';
+                        }
+                        const _mshiftLeader = ptext.match(/Shift Leader:\s*([^\u00a0]+?)(?:\s{2,}|$)/);
+                        if (_mshiftLeader) document.getElementById('shiftLeader').value = _mshiftLeader[1].trim();
+                        const _mtargetOperator = ptext.match(/Target Operator:\s*([^\u00a0]+?)(?:\s{2,}|$)/);
+                        if (_mtargetOperator) document.getElementById('targetOperator').value = _mtargetOperator[1].trim();
+                    }
+                });
+
                 doc.querySelectorAll('a').forEach(link => {
                     const href = link.getAttribute('href') || '';
                     const text = link.textContent.trim();
@@ -755,12 +881,6 @@
                     } else
                     if (text.toLowerCase().includes('link')) {
                         document.getElementById('checklistLink').value = href;
-                    } else
-                    if (text.toLowerCase().includes('beamline')) {
-                        document.getElementById('beamlineLink').value = href;
-                    } else
-                    if (text.toLowerCase().includes('link')) {
-                        document.getElementById('targetGuiLink').value = href;
                     } else
                     if (text.toLowerCase().includes('link')) {
                         document.getElementById('beamtimeLink').value = href;
@@ -799,7 +919,7 @@
                     const rows = Array.from(runSummaryTable.querySelectorAll('tr')).slice(1);
                     const validRows = rows.filter(row => {
                         const cells = row.querySelectorAll('td');
-                        if (cells.length < 16) return false;
+                        if (cells.length < 21) return false;
                         return Array.from(cells).some(cell => cell.textContent.trim() !== '');
                     });
                     if (validRows.length > 0) addRunEntry();
@@ -820,11 +940,16 @@
                             entry.querySelector('.run-shms-p').value = cells[8].textContent.trim();
                             entry.querySelector('.run-hms-angle').value = cells[9].textContent.trim();
                             entry.querySelector('.run-shms-angle').value = cells[10].textContent.trim();
-                            entry.querySelector('.run-events').value = cells[11].textContent.trim();
-                            entry.querySelector('.run-trigger-rate').value = cells[12].textContent.trim();
-                            entry.querySelector('.run-livetime').value = cells[13].textContent.trim();
-                            entry.querySelector('.run-config').value = cells[14].textContent.trim();
-                            entry.querySelector('.run-comments').value = cells[15].textContent.trim();
+                            entry.querySelector('.run-hms-eff').value = cells[11].textContent.trim();
+                            entry.querySelector('.run-shms-eff').value = cells[12].textContent.trim();
+                            entry.querySelector('.run-hms-34').value = cells[13].textContent.trim();
+                            entry.querySelector('.run-shms-34').value = cells[14].textContent.trim();
+                            entry.querySelector('.run-events').value = cells[15].textContent.trim();
+                            entry.querySelector('.run-trigger-rate').value = cells[16].textContent.trim();
+                            entry.querySelector('.prescales').value = cells[17].textContent.trim();
+                            entry.querySelector('.run-comments').value = cells[18].textContent.trim();
+                            entry.querySelector('.run-good-flag').checked = cells[19].textContent.trim() === 'Yes';
+                            entry.querySelector('.run-production').checked = cells[20].textContent.trim() === 'Yes';
                         }
                     });
                 }
